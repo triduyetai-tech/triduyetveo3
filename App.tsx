@@ -6,21 +6,12 @@ import { fileToBase64 } from './utils/fileUtils';
 import { PlusIcon, TrashIcon, LoaderIcon, WandSparklesIcon, PlayIcon, GripVerticalIcon } from './components/icons';
 import { translations } from './translations';
 
-// FIX: Removed the `readonly` modifier from the `aistudio` property on the Window interface to resolve the TypeScript error "All declarations of 'aistudio' must have identical modifiers."
-declare global {
-    interface Window {
-        aistudio: AIStudio;
-    }
-    interface AIStudio {
-        hasSelectedApiKey: () => Promise<boolean>;
-        openSelectKey: () => Promise<void>;
-    }
-}
-
 type AspectRatio = '16:9' | '9:16';
 
 const App: React.FC = () => {
-    const [apiKeySelected, setApiKeySelected] = useState(false);
+    const [apiKey, setApiKey] = useState<string>('');
+    const [tempApiKey, setTempApiKey] = useState<string>('');
+    const [showApiKeyScreen, setShowApiKeyScreen] = useState<boolean>(true);
     const [characterDescription, setCharacterDescription] = useState<string>('');
     const [characterImage, setCharacterImage] = useState<File | null>(null);
     const [characterImageB64, setCharacterImageB64] = useState<string | null>(null);
@@ -47,27 +38,21 @@ const App: React.FC = () => {
         return str;
     }, [language]);
 
-
-    const checkApiKey = useCallback(async () => {
-        try {
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            setApiKeySelected(hasKey);
-        } catch (error) {
-            console.error('Error checking for API key:', error);
-            setApiKeySelected(false);
+    useEffect(() => {
+        const storedKey = localStorage.getItem('gemini-api-key');
+        if (storedKey) {
+            setApiKey(storedKey);
+            setShowApiKeyScreen(false);
         }
     }, []);
 
-    useEffect(() => {
-        checkApiKey();
-    }, [checkApiKey]);
-
-    const handleSelectKey = async () => {
-        try {
-            await window.aistudio.openSelectKey();
-            setApiKeySelected(true); 
-        } catch (error) {
-            console.error('Error opening API key selection:', error);
+    const handleSaveApiKey = () => {
+        if (tempApiKey.trim()) {
+            setApiKey(tempApiKey);
+            localStorage.setItem('gemini-api-key', tempApiKey);
+            setShowApiKeyScreen(false);
+        } else {
+            alert(t('apiKeyRequiredError'));
         }
     };
     
@@ -113,10 +98,15 @@ const App: React.FC = () => {
             alert(t('storyIdeaRequiredError'));
             return;
         }
+         if (!apiKey) {
+            alert(t('apiKeyRequiredError'));
+            setShowApiKeyScreen(true);
+            return;
+        }
 
         setIsGeneratingScript(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             const prompt = `
                 You are a scriptwriter for short videos. Your task is to take a story idea and a target duration and break it down into a series of distinct scenes.
 
@@ -159,7 +149,7 @@ const App: React.FC = () => {
 
         } catch (error: any) {
             console.error('An error occurred during script generation:', error);
-            alert(t('genericError', { message: error.message }));
+            alert(t('genericError', { message: `${error.message} ${t('apiKeyErrorHint')}` }));
         } finally {
             setIsGeneratingScript(false);
         }
@@ -170,11 +160,16 @@ const App: React.FC = () => {
             alert(t('formValidationError'));
             return;
         }
+        if (!apiKey) {
+            alert(t('apiKeyRequiredError'));
+            setShowApiKeyScreen(true);
+            return;
+        }
 
         setIsGeneratingPrompts(true);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             
             const sceneDescriptions = scenes.map(s => `Scene ID ${s.id}: ${s.description}`).join('\n');
             const promptGenerationPrompt = `
@@ -218,7 +213,7 @@ const App: React.FC = () => {
 
         } catch (error: any) {
             console.error('An error occurred during prompt generation:', error);
-            alert(t('genericError', { message: error.message }));
+            alert(t('genericError', { message: `${error.message} ${t('apiKeyErrorHint')}` }));
         } finally {
             setIsGeneratingPrompts(false);
         }
@@ -227,11 +222,17 @@ const App: React.FC = () => {
     const handleGenerateVideo = async (sceneId: number) => {
         const sceneToProcess = scenes.find(s => s.id === sceneId);
         if (!sceneToProcess || !characterImageB64 || !characterImage) return;
+        
+        if (!apiKey) {
+            alert(t('apiKeyRequiredError'));
+            setShowApiKeyScreen(true);
+            return;
+        }
 
         setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isLoading: true, error: null } : s));
 
         try {
-            const videoAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const videoAi = new GoogleGenAI({ apiKey });
             let operation = await videoAi.models.generateVideos({
                 model: 'veo-3.1-fast-generate-preview',
                 prompt: sceneToProcess.generatedPrompt,
@@ -258,7 +259,7 @@ const App: React.FC = () => {
             let finalThumbnailUrl = null;
             if (thumbnailLink) {
                 try {
-                     const thumbnailResponse = await fetch(`${thumbnailLink}&key=${process.env.API_KEY}`);
+                     const thumbnailResponse = await fetch(`${thumbnailLink}&key=${apiKey}`);
                      const thumbnailBlob = await thumbnailResponse.blob();
                      finalThumbnailUrl = URL.createObjectURL(thumbnailBlob);
                 } catch (thumbError) {
@@ -267,7 +268,7 @@ const App: React.FC = () => {
             }
 
             if (downloadLink) {
-                const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+                const videoResponse = await fetch(`${downloadLink}&key=${apiKey}`);
                 const videoBlob = await videoResponse.blob();
                 const videoUrl = URL.createObjectURL(videoBlob);
                 setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, videoUrl, thumbnailUrl: finalThumbnailUrl, isLoading: false } : s));
@@ -276,12 +277,8 @@ const App: React.FC = () => {
             }
         } catch (err: any) {
             console.error(`Error generating video for scene ${sceneId}:`, err);
-            const errorMessage = err.message || 'An unknown error occurred.';
+            const errorMessage = `${err.message || 'An unknown error occurred.'} ${t('apiKeyErrorHint')}`;
             setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isLoading: false, error: errorMessage } : s));
-            if (errorMessage.includes("Requested entity was not found")) {
-                setApiKeySelected(false);
-                alert(t('invalidApiKeyError'));
-            }
         }
     };
 
@@ -321,15 +318,22 @@ const App: React.FC = () => {
     const isAnyVideoLoading = scenes.some(s => s.isLoading);
     const isFormDisabled = isGeneratingPrompts || isAnyVideoLoading;
 
-    if (!apiKeySelected) {
+    if (showApiKeyScreen) {
         return (
             <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">
                 <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-lg text-center">
                     <h1 className="text-3xl font-bold mb-4 text-cyan-400">{t('welcome')}</h1>
                     <p className="mb-6 text-gray-300">{t('apiKeyPrompt')}</p>
+                    <input
+                        type="password"
+                        value={tempApiKey}
+                        onChange={(e) => setTempApiKey(e.target.value)}
+                        placeholder={t('apiKeyPlaceholder')}
+                        className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors mb-4 text-center"
+                    />
                     <p className="mb-6 text-sm text-gray-400">{t('billingInfo')} <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">ai.google.dev/gemini-api/docs/billing</a>.</p>
                     <button
-                        onClick={handleSelectKey}
+                        onClick={handleSaveApiKey}
                         className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
                     >
                         {t('selectApiKey')}
@@ -350,9 +354,14 @@ const App: React.FC = () => {
                             </h1>
                             <p className="mt-2 text-lg text-gray-400">{t('subtitle')}</p>
                         </div>
-                        <div className="flex space-x-2">
-                             <button onClick={() => setLanguage('vi')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'vi' ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Tiếng Việt</button>
-                             <button onClick={() => setLanguage('en')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'en' ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>English</button>
+                         <div className="flex items-center space-x-4">
+                            <div className="flex space-x-2">
+                                 <button onClick={() => setLanguage('vi')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'vi' ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Tiếng Việt</button>
+                                 <button onClick={() => setLanguage('en')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'en' ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>English</button>
+                            </div>
+                            <button onClick={() => { setTempApiKey(''); setShowApiKeyScreen(true); }} className="px-3 py-1 text-sm rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600">
+                                {t('changeApiKey')}
+                            </button>
                         </div>
                     </div>
                 </header>

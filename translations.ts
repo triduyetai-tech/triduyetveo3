@@ -13,11 +13,13 @@ export const translations: Translations = {
     // Header
     title: 'Veo Character Scripter',
     subtitle: 'Create consistent character video scripts with AI.',
+    changeApiKey: 'Change API Key',
     // API Key Screen
     welcome: 'Welcome!',
-    apiKeyPrompt: 'This application uses the Veo 3.1 video generation model. To proceed, please select your Google AI Studio API key. This is a necessary step for video generation.',
+    apiKeyPrompt: 'This application requires a Google AI Studio API key to generate videos. Please enter your key below to continue.',
     billingInfo: 'For information about billing, please visit',
-    selectApiKey: 'Select API Key',
+    selectApiKey: 'Save & Continue',
+    apiKeyPlaceholder: 'Enter your API Key here',
     // Main App - Left Panel
     defineCharacterTitle: '1. Define Your Character',
     characterDescriptionPlaceholder: 'e.g., A cheerful young astronaut named Alex with a bright blue suit and a curious, adventurous personality.',
@@ -49,7 +51,8 @@ export const translations: Translations = {
     generatingVideoSubtext: 'This may take a few minutes.',
     videoFailed: 'Video Generation Failed',
     // Loading & Alerts
-    invalidApiKeyError: 'API Key is invalid. Please select a valid key.',
+    apiKeyRequiredError: 'An API key is required to proceed.',
+    apiKeyErrorHint: '(This may be due to an invalid API key.)',
     genericError: 'An error occurred: {message}',
     formValidationError: 'Please provide a character description, a reference image, and a description for every scene.',
     storyIdeaRequiredError: 'Please enter a story idea to generate a script.',
@@ -58,11 +61,13 @@ export const translations: Translations = {
     // Header
     title: 'Tạo Kịch Bản Nhân Vật Veo',
     subtitle: 'Tạo kịch bản video với nhân vật nhất quán bằng AI.',
+    changeApiKey: 'Đổi Khóa API',
     // API Key Screen
     welcome: 'Chào mừng!',
-    apiKeyPrompt: 'Ứng dụng này sử dụng mô hình tạo video Veo 3.1. Để tiếp tục, vui lòng chọn khóa API Google AI Studio của bạn. Đây là một bước cần thiết để tạo video.',
+    apiKeyPrompt: 'Ứng dụng này yêu cầu khóa API của Google AI Studio để tạo video. Vui lòng nhập khóa của bạn vào bên dưới để tiếp tục.',
     billingInfo: 'Để biết thông tin về thanh toán, vui lòng truy cập',
-    selectApiKey: 'Chọn Khóa API',
+    selectApiKey: 'Lưu & Tiếp tục',
+    apiKeyPlaceholder: 'Nhập Khóa API của bạn tại đây',
     // Main App - Left Panel
     defineCharacterTitle: '1. Xác định Nhân vật của bạn',
     characterDescriptionPlaceholder: 'VD: Một phi hành gia trẻ vui vẻ tên Alex trong bộ đồ màu xanh dương sáng, có tính cách tò mò và thích phiêu lưu.',
@@ -94,7 +99,8 @@ export const translations: Translations = {
     generatingVideoSubtext: 'Quá trình này có thể mất vài phút.',
     videoFailed: 'Tạo Video Thất bại',
     // Loading & Alerts
-    invalidApiKeyError: 'Khóa API không hợp lệ. Vui lòng chọn một khóa hợp lệ.',
+    apiKeyRequiredError: 'Vui lòng nhập khóa API để tiếp tục.',
+    apiKeyErrorHint: '(Lỗi này có thể do khóa API không hợp lệ.)',
     genericError: 'Đã xảy ra lỗi: {message}',
     formValidationError: 'Vui lòng cung cấp mô tả nhân vật, hình ảnh tham chiếu và mô tả cho mọi cảnh.',
     storyIdeaRequiredError: 'Vui lòng nhập ý tưởng câu chuyện để tạo kịch bản.',
